@@ -2,7 +2,6 @@
 
 Standalone Go web app to map **LIS tests** (`lis_tests`) to **SIMRS Khanza** lab templates (`template_laboratorium.id_template`). Uses the same MySQL database as SIMRS.
 
-Specification: [MAPPING_APP_SPEC.md](https://github.com/your-org/SIMRS-Khanza/blob/main/MAPPING_APP_SPEC.md) (in SIMRS-Khanza repo).
 
 ## Quick start (Docker)
 
