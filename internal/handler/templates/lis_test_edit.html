@@ -1,0 +1,46 @@
+{{define "lis_test_edit.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>nav a { margin-right: 1rem; } .flash { color: green; } .err { color: #c00; }</style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<h1>{{.Title}}</h1>
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+<p><strong>lis_test_id:</strong> <code>{{.Test.LisTestID}}</code> (immutable)</p>
+<form method="post">
+  <label>test_name *<input name="test_name" required value="{{.Test.TestName}}"></label>
+  <label>local_code<input name="local_code" value="{{.Test.LocalCode}}"></label>
+  <label>status
+    <select name="status">
+      <option value="aktif" {{if eq .Test.Status "aktif"}}selected{{end}}>aktif</option>
+      <option value="nonaktif" {{if eq .Test.Status "nonaktif"}}selected{{end}}>nonaktif</option>
+    </select>
+  </label>
+  <button type="submit">Update</button>
+</form>
+<form method="post" action="/lis-tests/{{.Test.ID}}/delete" onsubmit="return confirm('Delete or deactivate?');">
+  <button type="submit" class="secondary">Delete / deactivate</button>
+</form>
+<h2>Active mappings</h2>
+<table>
+  <thead><tr><th>id_template</th><th>Pemeriksaan</th><th>panel</th><th></th></tr></thead>
+  <tbody>
+  {{range .Mappings}}
+  <tr><td>{{.IDTemplate}}</td><td>{{.Pemeriksaan}}</td><td>{{.KdJenisPrw}}</td><td><a href="/mappings">view</a></td></tr>
+  {{else}}
+  <tr><td colspan="4">No mappings.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+<p><a href="/map/bulk?lis_tests_pk={{.Test.ID}}">Bulk map more templates</a></p>
+</main>
+</body>
+</html>
+{{end}}

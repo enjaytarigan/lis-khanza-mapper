@@ -1,0 +1,25 @@
+{{define "lis_test_form.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>nav a { margin-right: 1rem; } .err { color: #c00; }</style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<h1>{{.Title}}</h1>
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+<form method="post">
+  <label>lis_test_id (LIS Test ID) *<input name="lis_test_id" required value="{{if .Test}}{{.Test.LisTestID}}{{end}}"></label>
+  <label>test_name *<input name="test_name" required value="{{if .Test}}{{.Test.TestName}}{{end}}"></label>
+  <label>local_code<input name="local_code" value="{{if .Test}}{{.Test.LocalCode}}{{end}}"></label>
+  <button type="submit">Save</button>
+  <a href="/lis-tests">Cancel</a>
+</form>
+</main>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,24 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>nav a { margin-right: 1rem; } table { font-size: 0.9rem; } .flash { color: green; } .err { color: #c00; }</style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<h1>{{.Title}}</h1>
+<div class="grid">
+  <article><header>LIS tests (aktif)</header><p style="font-size:2rem">{{.Stats.LisTestsActive}}</p></article>
+  <article><header>Mappings (aktif)</header><p style="font-size:2rem">{{.Stats.MappingsActive}}</p></article>
+  <article><header>SIMRS templates</header><p style="font-size:2rem">{{.Stats.TemplateCount}}</p></article>
+</div>
+<p><a href="/map/bulk" role="button">Bulk map templates → LIS test</a></p>
+</main>
+</body>
+</html>
+{{end}}

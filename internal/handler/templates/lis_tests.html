@@ -1,0 +1,48 @@
+{{define "lis_tests.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>nav a { margin-right: 1rem; } .flash { color: green; } .err { color: #c00; }</style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<h1>{{.Title}}</h1>
+{{if .Flash}}<p class="flash">{{.Flash}}</p>{{end}}
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+<form method="get" class="grid">
+  <input type="search" name="q" placeholder="Search lis_test_id, local_code, name" value="{{index .Query "q"}}">
+  <select name="status">
+    <option value="">All status</option>
+    <option value="aktif" {{if eq (index .Query "status") "aktif"}}selected{{end}}>aktif</option>
+    <option value="nonaktif" {{if eq (index .Query "status") "nonaktif"}}selected{{end}}>nonaktif</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+<p><a href="/lis-tests/new" role="button">New LIS test</a></p>
+<table>
+  <thead><tr><th>ID</th><th>lis_test_id</th><th>test_name</th><th>local_code</th><th>status</th><th>mappings</th><th></th></tr></thead>
+  <tbody>
+  {{range .Tests}}
+  <tr>
+    <td>{{.ID}}</td>
+    <td><code>{{.LisTestID}}</code></td>
+    <td>{{.TestName}}</td>
+    <td>{{.LocalCode}}</td>
+    <td>{{.Status}}</td>
+    <td>{{.MapCount}}</td>
+    <td><a href="/lis-tests/{{.ID}}">Edit</a></td>
+  </tr>
+  {{else}}
+  <tr><td colspan="7">No LIS tests yet.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</main>
+</body>
+</html>
+{{end}}
