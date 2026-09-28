@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -14,17 +15,22 @@ import (
 )
 
 type pageData struct {
-	Title   string
-	Flash   string
-	Error   string
-	Stats   model.DashboardStats
-	Panels  []model.Panel
-	Tests   []model.LisTest
-	Test    *model.LisTest
-	Templates []model.Template
-	Mappings []model.Mapping
-	Bulk    bulkPageData
-	Query   map[string]string
+	Title        string
+	Flash        string
+	Error        string
+	Stats        model.DashboardStats
+	Panels       []model.Panel
+	Tests        []model.LisTest
+	Test         *model.LisTest
+	Templates    []model.Template
+	Mappings     []model.Mapping
+	BridgingLogs model.BridgingLogListResult
+	BridgingLog  *model.BridgingLog
+	Bulk         bulkPageData
+	Query        map[string]string
+	PrevPage     int
+	NextPage     int
+	HasNext      bool
 }
 
 type bulkPageData struct {
@@ -249,4 +255,55 @@ func (s *Server) mappingDelete(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
 	_ = s.mappings.Deactivate(r.Context(), id)
 	http.Redirect(w, r, "/mappings?flash=deactivated", http.StatusSeeOther)
+}
+
+func (s *Server) bridgingLogList(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	status := r.URL.Query().Get("status")
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	const limit = 50
+	result, err := s.bridgingLogs.List(r.Context(), q, status, page, limit)
+	if err != nil {
+		render(w, "bridging_logs.html", pageData{Title: "Log Bridging", Error: err.Error()})
+		return
+	}
+	hasNext := page*limit < result.Total
+	render(w, "bridging_logs.html", pageData{
+		Title:        "Log Bridging",
+		BridgingLogs: result,
+		Query:        map[string]string{"q": q, "status": status},
+		PrevPage:     page - 1,
+		NextPage:     page + 1,
+		HasNext:      hasNext,
+	})
+}
+
+func (s *Server) bridgingLogDetail(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	row, err := s.bridgingLogs.GetByID(r.Context(), id)
+	if err != nil {
+		render(w, "bridging_log_detail.html", pageData{Title: "Log Bridging", Error: err.Error()})
+		return
+	}
+	if row == nil {
+		http.NotFound(w, r)
+		return
+	}
+	payload := row.PayloadJSON
+	if payload != "" {
+		var pretty any
+		if json.Unmarshal([]byte(payload), &pretty) == nil {
+			if b, err := json.MarshalIndent(pretty, "", "  "); err == nil {
+				payload = string(b)
+				row.PayloadJSON = payload
+			}
+		}
+	}
+	render(w, "bridging_log_detail.html", pageData{
+		Title:       fmt.Sprintf("Log Bridging #%d", row.ID),
+		BridgingLog: row,
+	})
 }

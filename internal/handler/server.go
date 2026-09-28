@@ -9,15 +9,18 @@ import (
 
 	"lis-khanza-mapper/internal/auth"
 	"lis-khanza-mapper/internal/config"
+	"lis-khanza-mapper/internal/medqlab"
 	"lis-khanza-mapper/internal/repository"
 )
 
 type Server struct {
-	cfg      config.Config
-	db       *sql.DB
-	lisTests *repository.LisTestRepo
-	mappings *repository.MappingRepo
-	simrs    *repository.SimrsRepo
+	cfg          config.Config
+	db           *sql.DB
+	lisTests     *repository.LisTestRepo
+	mappings     *repository.MappingRepo
+	simrs        *repository.SimrsRepo
+	medqlab      *medqlab.Service
+	bridgingLogs *repository.BridgingLogRepo
 }
 
 func NewServer(cfg config.Config, db *sql.DB) (*Server, error) {
@@ -25,11 +28,13 @@ func NewServer(cfg config.Config, db *sql.DB) (*Server, error) {
 		return nil, err
 	}
 	return &Server{
-		cfg:      cfg,
-		db:       db,
-		lisTests: repository.NewLisTestRepo(db),
-		mappings: repository.NewMappingRepo(db),
-		simrs:    repository.NewSimrsRepo(db),
+		cfg:          cfg,
+		db:           db,
+		lisTests:     repository.NewLisTestRepo(db),
+		mappings:     repository.NewMappingRepo(db),
+		simrs:        repository.NewSimrsRepo(db),
+		medqlab:      medqlab.NewService(db, cfg.MedQLabBridgingNIP),
+		bridgingLogs: repository.NewBridgingLogRepo(db),
 	}, nil
 }
 
@@ -42,6 +47,12 @@ func (s *Server) Router() http.Handler {
 
 	r.Get("/healthz", s.healthz)
 	r.Get("/readyz", s.readyz)
+
+	// MedQLab push webhook (API key — not Basic auth).
+	r.Group(func(wr chi.Router) {
+		wr.Use(auth.APIKeyMiddleware(s.cfg.MedQLabWebhookAPIKey))
+		wr.Post("/api/v1/medqlab/hasil", s.medqlabHasil)
+	})
 
 	r.Group(func(pr chi.Router) {
 		pr.Use(auth.Middleware(auth.Credentials{
@@ -64,6 +75,9 @@ func (s *Server) Router() http.Handler {
 
 		pr.Get("/mappings", s.mappingList)
 		pr.Post("/mappings/{id}/delete", s.mappingDelete)
+
+		pr.Get("/bridging-logs", s.bridgingLogList)
+		pr.Get("/bridging-logs/{id}", s.bridgingLogDetail)
 
 		// JSON API
 		pr.Route("/api/v1", func(api chi.Router) {
