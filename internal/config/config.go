@@ -12,15 +12,21 @@ type Config struct {
 	AuthPassword string
 	Listen       string
 	Env          string
+
+	// MedQLab push webhook (optional — endpoint returns 503 if API key unset).
+	MedQLabWebhookAPIKey string
+	MedQLabBridgingNIP   string
 }
 
 func Load() (Config, error) {
 	cfg := Config{
-		DatabaseDSN:   strings.TrimSpace(os.Getenv("DATABASE_DSN")),
-		AuthUsername:  strings.TrimSpace(os.Getenv("AUTH_USERNAME")),
-		AuthPassword:  os.Getenv("AUTH_PASSWORD"),
-		Listen: envOr("APP_LISTEN", ":8080"),
-		Env:    envOr("APP_ENV", "production"),
+		DatabaseDSN:          strings.TrimSpace(os.Getenv("DATABASE_DSN")),
+		AuthUsername:         strings.TrimSpace(os.Getenv("AUTH_USERNAME")),
+		AuthPassword:         os.Getenv("AUTH_PASSWORD"),
+		Listen:               envOr("APP_LISTEN", ":8080"),
+		Env:                  envOr("APP_ENV", "production"),
+		MedQLabWebhookAPIKey: strings.TrimSpace(os.Getenv("MEDQLAB_WEBHOOK_API_KEY")),
+		MedQLabBridgingNIP:   strings.TrimSpace(os.Getenv("MEDQLAB_BRIDGING_NIP")),
 	}
 	if cfg.DatabaseDSN == "" {
 		return cfg, fmt.Errorf("DATABASE_DSN is required")

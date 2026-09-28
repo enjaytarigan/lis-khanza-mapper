@@ -1,0 +1,52 @@
+{{define "bridging_log_detail.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    nav a { margin-right: 1rem; }
+    .err { color: #c00; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; }
+    .badge-posted { background: #d4edda; color: #155724; }
+    .badge-failed { background: #f8d7da; color: #721c24; }
+    .badge-accepted { background: #fff3cd; color: #856404; }
+    pre.payload { max-height: 480px; overflow: auto; font-size: 0.8rem; background: #f6f8fa; padding: 1rem; }
+  </style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<p><a href="/bridging-logs">← Log Bridging</a></p>
+<h1>{{.Title}}</h1>
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+{{with .BridgingLog}}
+<article>
+  <header>
+    Inbox #{{.ID}}
+    <span class="badge badge-{{.Status}}">{{.Status}}</span>
+  </header>
+  <div class="grid">
+    <div><strong>no_order</strong><br><code>{{.NoOrder}}</code></div>
+    <div><strong>no_laboratorium</strong><br><code>{{.NoLaboratorium}}</code></div>
+    <div><strong>Created</strong><br>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</div>
+    <div><strong>Updated</strong><br>{{.UpdatedAt.Format "2006-01-02 15:04:05"}}</div>
+  </div>
+  <div class="grid">
+    <div><strong>Mapped</strong><br>{{.MappedCount}}</div>
+    <div><strong>Unmapped</strong><br>{{.UnmappedCount}}</div>
+    <div><strong>Details written</strong><br>{{.DetailWritten}}</div>
+  </div>
+  {{if .ErrorMessage}}
+  <p class="err"><strong>Error:</strong> {{.ErrorMessage}}</p>
+  {{end}}
+  <h3>Payload</h3>
+  <pre class="payload">{{.PayloadJSON}}</pre>
+</article>
+{{end}}
+</main>
+</body>
+</html>
+{{end}}

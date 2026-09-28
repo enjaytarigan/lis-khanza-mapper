@@ -1,0 +1,88 @@
+{{define "bridging_logs.html"}}
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} — LIS Khanza Mapper</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    nav a { margin-right: 1rem; }
+    table { font-size: 0.9rem; }
+    .flash { color: green; }
+    .err { color: #c00; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 0.25rem; font-size: 0.8rem; }
+    .badge-posted { background: #d4edda; color: #155724; }
+    .badge-failed { background: #f8d7da; color: #721c24; }
+    .badge-accepted { background: #fff3cd; color: #856404; }
+    .err-cell { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  </style>
+</head>
+<body>
+<main class="container">
+{{template "nav" .}}
+<h1>{{.Title}}</h1>
+{{if .Error}}<p class="err">{{.Error}}</p>{{end}}
+
+<form method="get" class="grid">
+  <input type="search" name="q" placeholder="no_order / no_laboratorium / error" value="{{index .Query "q"}}">
+  <select name="status">
+    <option value="">All status</option>
+    <option value="posted" {{if eq (index .Query "status") "posted"}}selected{{end}}>posted</option>
+    <option value="failed" {{if eq (index .Query "status") "failed"}}selected{{end}}>failed</option>
+    <option value="accepted" {{if eq (index .Query "status") "accepted"}}selected{{end}}>accepted</option>
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<p><small>Total: {{.BridgingLogs.Total}} · Page {{.BridgingLogs.Page}}</small></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Waktu</th>
+      <th>no_order</th>
+      <th>no_laboratorium</th>
+      <th>Status</th>
+      <th>Mapped</th>
+      <th>Unmapped</th>
+      <th>Details</th>
+      <th>Error</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .BridgingLogs.Items}}
+  <tr>
+    <td>{{.ID}}</td>
+    <td><small>{{.CreatedAt.Format "2006-01-02 15:04:05"}}</small></td>
+    <td><code>{{.NoOrder}}</code></td>
+    <td><code>{{.NoLaboratorium}}</code></td>
+    <td><span class="badge badge-{{.Status}}">{{.Status}}</span></td>
+    <td>{{.MappedCount}}</td>
+    <td>{{.UnmappedCount}}</td>
+    <td>{{.DetailWritten}}</td>
+    <td class="err-cell" title="{{.ErrorMessage}}">{{.ErrorMessage}}</td>
+    <td><a href="/bridging-logs/{{.ID}}">Detail</a></td>
+  </tr>
+  {{else}}
+  <tr><td colspan="10">Belum ada log bridging.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+
+{{if gt .BridgingLogs.Total .BridgingLogs.Limit}}
+<nav>
+  {{if gt .BridgingLogs.Page 1}}
+  <a href="?q={{index .Query "q"}}&status={{index .Query "status"}}&page={{.PrevPage}}">← Prev</a>
+  {{end}}
+  {{if .HasNext}}
+  <a href="?q={{index .Query "q"}}&status={{index .Query "status"}}&page={{.NextPage}}">Next →</a>
+  {{end}}
+</nav>
+{{end}}
+</main>
+</body>
+</html>
+{{end}}

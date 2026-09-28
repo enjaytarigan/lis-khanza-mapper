@@ -43,10 +43,31 @@ type Mapping struct {
 	UpdatedAt   time.Time
 }
 
+type BridgingLog struct {
+	ID             uint64
+	NoOrder        string
+	NoLaboratorium string
+	Status         string
+	MappedCount    int
+	UnmappedCount  int
+	DetailWritten  int
+	ErrorMessage   string
+	PayloadJSON    string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type BridgingLogListResult struct {
+	Items []BridgingLog
+	Total int
+	Page  int
+	Limit int
+}
+
 type DashboardStats struct {
-	LisTestsActive    int
-	MappingsActive    int
-	TemplateCount     int
+	LisTestsActive int
+	MappingsActive int
+	TemplateCount  int
 }
 
 type BulkMapResult struct {
