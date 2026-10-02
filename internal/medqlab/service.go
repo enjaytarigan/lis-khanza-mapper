@@ -239,6 +239,16 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 	tgl, jam, dtSource := resolveExamDateTime(perm, mapped)
 	log.Printf("[medqlab] step=exam_datetime tgl=%s jam=%s source=%s", tgl, jam, dtSource)
 
+	tglSampel, jamSampel := "", ""
+	if resp.Demographics != nil {
+		tglSampel, jamSampel = parseCollectDate(resp.Demographics.CollectDate)
+	}
+	if tglSampel != "" {
+		log.Printf("[medqlab] step=sample_datetime tgl_sampel=%s jam_sampel=%s source=demographics.collectDate", tglSampel, jamSampel)
+	} else {
+		log.Printf("[medqlab] step=sample_datetime skip (collectDate empty/unparseable)")
+	}
+
 	pj, err := s.loadPJDokter(ctx)
 	if err != nil {
 		log.Printf("[medqlab] step=load_pj_dokter FAIL: %v", err)
@@ -260,7 +270,7 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 	}
 
 	log.Printf("[medqlab] step=write_simrs BEGIN noorder=%q no_rawat=%q rows=%d", noOrder, perm.NoRawat, len(mapped))
-	panelsWritten, detailWritten, err := s.writeSIMRS(ctx, perm, mapped, tgl, jam, pj, kesan)
+	panelsWritten, detailWritten, err := s.writeSIMRS(ctx, perm, mapped, tgl, jam, tglSampel, jamSampel, pj, kesan)
 	if err != nil {
 		log.Printf("[medqlab] step=write_simrs FAIL: %v", err)
 		return nil, err
@@ -291,10 +301,7 @@ func resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, sou
 		if m.Leaf.ValidatedAt == "" {
 			continue
 		}
-		t, err := time.Parse(time.RFC3339Nano, m.Leaf.ValidatedAt)
-		if err != nil {
-			t, err = time.Parse(time.RFC3339, m.Leaf.ValidatedAt)
-		}
+		t, err := parseMedQLabTime(m.Leaf.ValidatedAt)
 		if err != nil {
 			continue
 		}
@@ -317,19 +324,59 @@ func resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, sou
 	return now.Format("2006-01-02"), now.Format("15:04:05"), "now"
 }
 
-func (s *Service) writeSIMRS(ctx context.Context, perm *permintaanLab, mapped []mappedRow, tgl, jam, pj, kesan string) (panelsWritten, detailWritten int, err error) {
+// parseCollectDate maps MedQLab demographics.collectDate → permintaan_lab tgl_sampel/jam_sampel.
+func parseCollectDate(raw string) (tgl, jam string) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", ""
+	}
+	t, err := parseMedQLabTime(raw)
+	if err != nil {
+		log.Printf("[medqlab] parseCollectDate FAIL raw=%q err=%v", raw, err)
+		return "", ""
+	}
+	local := t.Local()
+	return local.Format("2006-01-02"), local.Format("15:04:05")
+}
+
+func parseMedQLabTime(raw string) (time.Time, error) {
+	raw = strings.TrimSpace(raw)
+	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
+		return t, nil
+	}
+	if t, err := time.Parse(time.RFC3339, raw); err == nil {
+		return t, nil
+	}
+	// MedQLab sometimes sends "2006-01-02 15:04:05"
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local); err == nil {
+		return t, nil
+	}
+	return time.Time{}, fmt.Errorf("unsupported datetime: %q", raw)
+}
+
+func (s *Service) writeSIMRS(ctx context.Context, perm *permintaanLab, mapped []mappedRow, tgl, jam, tglSampel, jamSampel, pj, kesan string) (panelsWritten, detailWritten int, err error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	if _, err := tx.ExecContext(ctx, `
+	if tglSampel != "" && jamSampel != "" {
+		if _, err := tx.ExecContext(ctx, `
+UPDATE permintaan_lab SET tgl_hasil=?, jam_hasil=?, tgl_sampel=?, jam_sampel=? WHERE noorder=?`,
+			tgl, jam, tglSampel, jamSampel, perm.NoOrder); err != nil {
+			return 0, 0, fmt.Errorf("update permintaan_lab: %w", err)
+		}
+		log.Printf("[medqlab]   db=permintaan_lab UPDATE tgl_hasil=%s jam_hasil=%s tgl_sampel=%s jam_sampel=%s WHERE noorder=%s",
+			tgl, jam, tglSampel, jamSampel, perm.NoOrder)
+	} else {
+		if _, err := tx.ExecContext(ctx, `
 UPDATE permintaan_lab SET tgl_hasil=?, jam_hasil=? WHERE noorder=?`,
-		tgl, jam, perm.NoOrder); err != nil {
-		return 0, 0, fmt.Errorf("update permintaan_lab: %w", err)
+			tgl, jam, perm.NoOrder); err != nil {
+			return 0, 0, fmt.Errorf("update permintaan_lab: %w", err)
+		}
+		log.Printf("[medqlab]   db=permintaan_lab UPDATE tgl_hasil=%s jam_hasil=%s WHERE noorder=%s", tgl, jam, perm.NoOrder)
 	}
-	log.Printf("[medqlab]   db=permintaan_lab UPDATE tgl_hasil=%s jam_hasil=%s WHERE noorder=%s", tgl, jam, perm.NoOrder)
 
 	statusLabel := titleStatus(perm.Status)
 	panelSet := map[string]struct{}{}

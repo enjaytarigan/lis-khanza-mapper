@@ -202,7 +202,7 @@ docker compose up -d --build
 | **SELECT** | `template_laboratorium`, `jns_perawatan_lab`, `permintaan_lab`, `reg_periksa` |
 | **CREATE / ALTER / INSERT / UPDATE / SELECT** | `lis_tests`, `lis_mapping_tests`, `lis_hasil_inbox` |
 | **INSERT / UPDATE / SELECT** | `periksa_lab`, `detail_periksa_lab`, `saran_kesan_lab` |
-| **UPDATE** | `permintaan_lab` (kolom `tgl_hasil` / `jam_hasil`) |
+| **UPDATE** | `permintaan_lab` (kolom `tgl_hasil` / `jam_hasil`; plus `tgl_sampel` / `jam_sampel` jika ada `collectDate`) |
 
 2. Mapping LIS ↔ template dikelola lewat UI; hasil lab ditulis otomatis saat MedQLab push ke API.
 

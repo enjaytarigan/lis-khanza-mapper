@@ -30,6 +30,7 @@ type Demographics struct {
 	VisitNumber      string  `json:"visitNumber"`  // SIMRS no_rawat (preferred)
 	VisitNumberSnake string  `json:"visit_number"` // alternate key
 	NoOrder          string  `json:"noOrder"`
+	CollectDate      string  `json:"collectDate"` // specimen collection time → permintaan_lab.tgl_sampel/jam_sampel
 	CommentsSample   *string `json:"commentsSample"`
 	Diagnose         string  `json:"diagnose"`
 	SourceType       string  `json:"sourceType"`

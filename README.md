@@ -110,7 +110,7 @@ X-API-Key: <MEDQLAB_WEBHOOK_API_KEY>
 
 Also accepted: `Authorization: Bearer <MEDQLAB_WEBHOOK_API_KEY>`.
 
-On success the service resolves the SIMRS order, maps examinations via `lis_mapping_tests`, and writes `periksa_lab` / `detail_periksa_lab` / `saran_kesan_lab` (no journal). Audit rows go to `lis_hasil_inbox` (visible under **Log Bridging**).
+On success the service resolves the SIMRS order, maps examinations via `lis_mapping_tests`, and writes `periksa_lab` / `detail_periksa_lab` / `saran_kesan_lab` (no journal). It also updates `permintaan_lab.tgl_hasil` / `jam_hasil`, and when MedQLab sends `demographics.collectDate`, updates `tgl_sampel` / `jam_sampel`. Audit rows go to `lis_hasil_inbox` (visible under **Log Bridging**).
 
 Requires `MEDQLAB_WEBHOOK_API_KEY` and `MEDQLAB_BRIDGING_NIP` in `.env`.
 
