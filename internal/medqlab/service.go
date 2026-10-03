@@ -16,6 +16,7 @@ var (
 	ErrOrderNotFound      = errors.New("permintaan_lab not found")
 	ErrRegistrationClosed = errors.New("registrasi sudah ditutup")
 	ErrNoMappedResults    = errors.New("no mapped examination results")
+	ErrNoValidatedAt      = errors.New("no validatedAt on examination results")
 	ErrNIPRequired        = errors.New("MEDQLAB_BRIDGING_NIP is required")
 	ErrNoRawatRequired    = errors.New("visitNumber / no_rawat is required")
 )
@@ -240,8 +241,12 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 		return nil, ErrNoMappedResults
 	}
 
-	tgl, jam, dtSource := s.resolveExamDateTime(perm, mapped)
-	log.Printf("[medqlab] step=exam_datetime tgl=%s jam=%s source=%s", tgl, jam, dtSource)
+	tgl, jam, err := s.resolveExamDateTime(mapped)
+	if err != nil {
+		log.Printf("[medqlab] step=exam_datetime FAIL: %v", err)
+		return nil, err
+	}
+	log.Printf("[medqlab] step=exam_datetime tgl=%s jam=%s source=max_validatedAt timezone=%s", tgl, jam, s.loc)
 
 	tglSampel, jamSampel := "", ""
 	if resp.Demographics != nil {
@@ -295,37 +300,30 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 	}, nil
 }
 
-func (s *Service) resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, source string) {
-	if perm.TglHasil != "" && perm.TglHasil != "0000-00-00" &&
-		perm.JamHasil != "" && perm.JamHasil != "00:00:00" {
-		return perm.TglHasil, perm.JamHasil, "existing_permintaan_lab.tgl_hasil"
-	}
+// resolveExamDateTime sets permintaan_lab.tgl_hasil / jam_hasil (and periksa_lab /
+// detail / saran_kesan datetime keys) from the latest examination validatedAt,
+// converted to s.loc (APP_TIMEZONE). That wall-clock matches what SIMRS uses when
+// printing hasil (tgl_hasil/jam_hasil and periksa_lab.tgl_periksa/jam).
+func (s *Service) resolveExamDateTime(mapped []mappedRow) (tgl, jam string, err error) {
 	var latest time.Time
 	for _, m := range mapped {
 		if m.Leaf.ValidatedAt == "" {
 			continue
 		}
-		t, err := parseMedQLabTime(m.Leaf.ValidatedAt, s.loc)
-		if err != nil {
+		t, parseErr := parseMedQLabTime(m.Leaf.ValidatedAt, s.loc)
+		if parseErr != nil {
+			log.Printf("[medqlab] step=exam_datetime skip validatedAt=%q err=%v", m.Leaf.ValidatedAt, parseErr)
 			continue
 		}
 		if t.After(latest) {
 			latest = t
 		}
 	}
-	if !latest.IsZero() {
-		local := latest.In(s.loc)
-		return local.Format("2006-01-02"), local.Format("15:04:05"), "max_validatedAt"
+	if latest.IsZero() {
+		return "", "", ErrNoValidatedAt
 	}
-	if perm.TglPermintaan != "" && perm.TglPermintaan != "0000-00-00" {
-		jamP := perm.JamPermintaan
-		if jamP == "" || jamP == "00:00:00" {
-			jamP = time.Now().In(s.loc).Format("15:04:05")
-		}
-		return perm.TglPermintaan, jamP, "permintaan_lab.tgl_permintaan"
-	}
-	now := time.Now().In(s.loc)
-	return now.Format("2006-01-02"), now.Format("15:04:05"), "now"
+	local := latest.In(s.loc)
+	return local.Format("2006-01-02"), local.Format("15:04:05"), nil
 }
 
 // parseCollectDate maps MedQLab demographics.collectDate → permintaan_lab tgl_sampel/jam_sampel.
