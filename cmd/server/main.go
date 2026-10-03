@@ -49,7 +49,11 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("listening on %s (env=%s)", cfg.Listen, cfg.Env)
+		tzLabel := cfg.Timezone
+		if tzLabel == "" {
+			tzLabel = "Local"
+		}
+		log.Printf("listening on %s (env=%s timezone=%s)", cfg.Listen, cfg.Env, tzLabel)
 		if err := httpSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("listen: %v", err)
 		}

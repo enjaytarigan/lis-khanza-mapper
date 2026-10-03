@@ -23,10 +23,14 @@ var (
 type Service struct {
 	db  *sql.DB
 	nip string
+	loc *time.Location
 }
 
-func NewService(db *sql.DB, bridgingNIP string) *Service {
-	return &Service{db: db, nip: strings.TrimSpace(bridgingNIP)}
+func NewService(db *sql.DB, bridgingNIP string, loc *time.Location) *Service {
+	if loc == nil {
+		loc = time.Local
+	}
+	return &Service{db: db, nip: strings.TrimSpace(bridgingNIP), loc: loc}
 }
 
 type ProcessResult struct {
@@ -236,12 +240,12 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 		return nil, ErrNoMappedResults
 	}
 
-	tgl, jam, dtSource := resolveExamDateTime(perm, mapped)
+	tgl, jam, dtSource := s.resolveExamDateTime(perm, mapped)
 	log.Printf("[medqlab] step=exam_datetime tgl=%s jam=%s source=%s", tgl, jam, dtSource)
 
 	tglSampel, jamSampel := "", ""
 	if resp.Demographics != nil {
-		tglSampel, jamSampel = parseCollectDate(resp.Demographics.CollectDate)
+		tglSampel, jamSampel = s.parseCollectDate(resp.Demographics.CollectDate)
 	}
 	if tglSampel != "" {
 		log.Printf("[medqlab] step=sample_datetime tgl_sampel=%s jam_sampel=%s source=demographics.collectDate", tglSampel, jamSampel)
@@ -291,7 +295,7 @@ func (s *Service) process(ctx context.Context, medqlabOrder, noLab, noRawat stri
 	}, nil
 }
 
-func resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, source string) {
+func (s *Service) resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, source string) {
 	if perm.TglHasil != "" && perm.TglHasil != "0000-00-00" &&
 		perm.JamHasil != "" && perm.JamHasil != "00:00:00" {
 		return perm.TglHasil, perm.JamHasil, "existing_permintaan_lab.tgl_hasil"
@@ -301,7 +305,7 @@ func resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, sou
 		if m.Leaf.ValidatedAt == "" {
 			continue
 		}
-		t, err := parseMedQLabTime(m.Leaf.ValidatedAt)
+		t, err := parseMedQLabTime(m.Leaf.ValidatedAt, s.loc)
 		if err != nil {
 			continue
 		}
@@ -310,45 +314,55 @@ func resolveExamDateTime(perm *permintaanLab, mapped []mappedRow) (tgl, jam, sou
 		}
 	}
 	if !latest.IsZero() {
-		local := latest.Local()
+		local := latest.In(s.loc)
 		return local.Format("2006-01-02"), local.Format("15:04:05"), "max_validatedAt"
 	}
 	if perm.TglPermintaan != "" && perm.TglPermintaan != "0000-00-00" {
 		jamP := perm.JamPermintaan
 		if jamP == "" || jamP == "00:00:00" {
-			jamP = time.Now().Format("15:04:05")
+			jamP = time.Now().In(s.loc).Format("15:04:05")
 		}
 		return perm.TglPermintaan, jamP, "permintaan_lab.tgl_permintaan"
 	}
-	now := time.Now()
+	now := time.Now().In(s.loc)
 	return now.Format("2006-01-02"), now.Format("15:04:05"), "now"
 }
 
 // parseCollectDate maps MedQLab demographics.collectDate → permintaan_lab tgl_sampel/jam_sampel.
-func parseCollectDate(raw string) (tgl, jam string) {
+func (s *Service) parseCollectDate(raw string) (tgl, jam string) {
+	return parseCollectDateIn(raw, s.loc)
+}
+
+func parseCollectDateIn(raw string, loc *time.Location) (tgl, jam string) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", ""
 	}
-	t, err := parseMedQLabTime(raw)
+	if loc == nil {
+		loc = time.Local
+	}
+	t, err := parseMedQLabTime(raw, loc)
 	if err != nil {
 		log.Printf("[medqlab] parseCollectDate FAIL raw=%q err=%v", raw, err)
 		return "", ""
 	}
-	local := t.Local()
+	local := t.In(loc)
 	return local.Format("2006-01-02"), local.Format("15:04:05")
 }
 
-func parseMedQLabTime(raw string) (time.Time, error) {
+func parseMedQLabTime(raw string, loc *time.Location) (time.Time, error) {
 	raw = strings.TrimSpace(raw)
+	if loc == nil {
+		loc = time.Local
+	}
 	if t, err := time.Parse(time.RFC3339Nano, raw); err == nil {
 		return t, nil
 	}
 	if t, err := time.Parse(time.RFC3339, raw); err == nil {
 		return t, nil
 	}
-	// MedQLab sometimes sends "2006-01-02 15:04:05"
-	if t, err := time.ParseInLocation("2006-01-02 15:04:05", raw, time.Local); err == nil {
+	// Naive datetime: interpret in configured hospital timezone.
+	if t, err := time.ParseInLocation("2006-01-02 15:04:05", raw, loc); err == nil {
 		return t, nil
 	}
 	return time.Time{}, fmt.Errorf("unsupported datetime: %q", raw)

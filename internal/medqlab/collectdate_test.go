@@ -1,27 +1,37 @@
 package medqlab
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
-func TestParseCollectDate(t *testing.T) {
-	tgl, jam := parseCollectDate("2025-08-07T06:52:48.391Z")
-	if tgl == "" || jam == "" {
-		t.Fatalf("expected parsed tanggal/jam, got tgl=%q jam=%q", tgl, jam)
+func TestParseCollectDateIn(t *testing.T) {
+	wib, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		t.Fatal(err)
 	}
-	// Local timezone may shift the calendar day; just ensure HH:MM:SS shape.
-	if len(jam) != 8 {
-		t.Fatalf("jam should be HH:MM:SS, got %q", jam)
-	}
-	if len(tgl) != 10 {
-		t.Fatalf("tgl should be YYYY-MM-DD, got %q", tgl)
-	}
-
-	tgl2, jam2 := parseCollectDate("2025-08-07 06:52:48")
-	if tgl2 != "2025-08-07" || jam2 != "06:52:48" {
-		t.Fatalf("local datetime: got tgl=%q jam=%q", tgl2, jam2)
+	wita, err := time.LoadLocation("Asia/Makassar")
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	tgl3, jam3 := parseCollectDate("")
-	if tgl3 != "" || jam3 != "" {
-		t.Fatalf("empty collectDate should yield empty, got tgl=%q jam=%q", tgl3, jam3)
+	tgl, jam := parseCollectDateIn("2025-08-07T06:52:48.391Z", wib)
+	if tgl != "2025-08-07" || jam != "13:52:48" {
+		t.Fatalf("WIB: got tgl=%q jam=%q want 2025-08-07 / 13:52:48", tgl, jam)
+	}
+
+	tgl2, jam2 := parseCollectDateIn("2025-08-07T06:52:48.391Z", wita)
+	if tgl2 != "2025-08-07" || jam2 != "14:52:48" {
+		t.Fatalf("WITA: got tgl=%q jam=%q want 2025-08-07 / 14:52:48", tgl2, jam2)
+	}
+
+	tgl3, jam3 := parseCollectDateIn("2025-08-07 06:52:48", wib)
+	if tgl3 != "2025-08-07" || jam3 != "06:52:48" {
+		t.Fatalf("naive datetime in WIB: got tgl=%q jam=%q", tgl3, jam3)
+	}
+
+	tgl4, jam4 := parseCollectDateIn("", wib)
+	if tgl4 != "" || jam4 != "" {
+		t.Fatalf("empty collectDate should yield empty, got tgl=%q jam=%q", tgl4, jam4)
 	}
 }

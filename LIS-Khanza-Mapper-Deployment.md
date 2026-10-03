@@ -114,6 +114,9 @@ APP_ENV=production
 APP_LISTEN=:8080
 APP_PORT=8080
 
+# Zona waktu rumah sakit (IANA). Contoh: Asia/Jakarta | Asia/Makassar | Asia/Jayapura | Asia/Pontianak
+APP_TIMEZONE=Asia/Jakarta
+
 # MedQLab push result API (POST /api/v1/medqlab/hasil)
 MEDQLAB_WEBHOOK_API_KEY=ganti-dengan-openssl-rand-hex-32
 MEDQLAB_BRIDGING_NIP=198001012000011001
@@ -153,6 +156,7 @@ DATABASE_DSN=spv:server@tcp(192.168.1.10:3306)/sik?parseTime=true&loc=Local&char
 | `APP_LISTEN` | Tidak | `:8080` | Bind di dalam container (gunakan `:8080`) |
 | `APP_PORT` | Tidak | `8080` | Port yang dipublish ke host |
 | `APP_ENV` | Tidak | `production` | Tetap `production` di server produksi |
+| `APP_TIMEZONE` | Tidak | process local | IANA TZ untuk konversi datetime MedQLab ke DATE/TIME SIMRS (`Asia/Jakarta`, `Asia/Makassar`, `Asia/Jayapura`, …). Fallback: `TZ` |
 
 | Variabel | Deskripsi |
 |----------|-----------|

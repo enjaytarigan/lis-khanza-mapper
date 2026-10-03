@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 )
 
 type Config struct {
@@ -12,6 +13,12 @@ type Config struct {
 	AuthPassword string
 	Listen       string
 	Env          string
+
+	// Timezone is the IANA name used for MedQLab datetime → SIMRS wall-clock conversion
+	// (e.g. Asia/Jakarta, Asia/Makassar, Asia/Jayapura, Asia/Pontianak).
+	// Empty means the process local timezone (time.Local).
+	Timezone string
+	Location *time.Location
 
 	// MedQLab push webhook (optional — endpoint returns 503 if API key unset).
 	MedQLabWebhookAPIKey string
@@ -34,6 +41,22 @@ func Load() (Config, error) {
 	if cfg.AuthUsername == "" || cfg.AuthPassword == "" {
 		return cfg, fmt.Errorf("AUTH_USERNAME and AUTH_PASSWORD are required")
 	}
+
+	tzName := strings.TrimSpace(os.Getenv("APP_TIMEZONE"))
+	if tzName == "" {
+		tzName = strings.TrimSpace(os.Getenv("TZ"))
+	}
+	cfg.Timezone = tzName
+	if tzName != "" {
+		loc, err := time.LoadLocation(tzName)
+		if err != nil {
+			return cfg, fmt.Errorf("APP_TIMEZONE/TZ %q is invalid: %w (use IANA names e.g. Asia/Jakarta, Asia/Makassar, Asia/Jayapura)", tzName, err)
+		}
+		cfg.Location = loc
+	} else {
+		cfg.Location = time.Local
+	}
+
 	return cfg, nil
 }
 

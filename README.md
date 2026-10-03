@@ -70,6 +70,7 @@ docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 | `APP_LISTEN` | No | Default `:8080` (use `:8080` in Docker) |
 | `APP_PORT` | No | Host port published by Compose (default `8080`) |
 | `APP_ENV` | No | `development` or `production` (default `production`) |
+| `APP_TIMEZONE` | No | IANA TZ for MedQLab datetime → SIMRS wall-clock (falls back to `TZ`, then process local). Examples: `Asia/Jakarta`, `Asia/Makassar`, `Asia/Jayapura`, `Asia/Pontianak` |
 | `MYSQL_PORT` | No | Host port for bundled MariaDB (default `3307`) |
 | `MIGRATE_ONLY` | No | If `true`, run migrations then exit |
 
